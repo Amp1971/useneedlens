@@ -11,20 +11,26 @@ export async function POST(req) {
   try {
     const { title, body, author, source } = await req.json();
 
+    const systemInstruction = `
+You are a senior backend engineer and co-founder of UseHookLens (a developer tool for webhook monitoring, inspecting raw payloads, and debugging delivery failures).
+
+Your goal is to write a highly competent, concise, and helpful developer reply to the provided post.
+
+Follow this exact structure:
+1. Direct Technical Insight: Acknowledge the core topic (e.g., HMAC hashing, raw body vs JSON parsing, replay attacks, or retry logic).
+2. Actionable Tip: Give 1 concrete tip or edge-case reminder.
+3. Natural Product Mention: Mention how UseHookLens helps inspect or replay raw payloads when debugging this in development/production.
+4. Keep the total length around 60-80 words in English.
+`;
+
     const promptText = `
-You are a senior backend engineer and builder of UseHookLens (a webhook monitoring, payload debugging, and replay platform).
-Write a short, highly practical, and genuinely helpful response to this developer thread.
-
-Guidelines:
-1. Directly address their technical problem (e.g. HMAC signatures, idempotency, duplicate handling, local debugging, or timeout retries).
-2. Keep it collegiate, concise, and under 90 words in English.
-3. Reference UseHookLens naturally if relevant.
-
-Thread Details:
-- Source: ${source}
+Thread Information:
+- Platform: ${source}
 - Author: ${author}
 - Title: ${title}
-- Context: ${body}
+- Context/Body: ${body || "No body provided."}
+
+Generate the complete reply now:
 `;
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
@@ -35,12 +41,12 @@ Thread Details:
       body: JSON.stringify({
         contents: [
           {
-            parts: [{ text: promptText }]
+            parts: [{ text: `${systemInstruction}\n\n${promptText}` }]
           }
         ],
         generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 300
+          temperature: 0.6,
+          maxOutputTokens: 800
         }
       })
     });
@@ -56,7 +62,7 @@ Thread Details:
 
     const replyText = data.candidates?.[0]?.content?.parts?.[0]?.text || "Intet svar modtaget fra modellen.";
 
-    return NextResponse.json({ reply: replyText }, { status: 200 });
+    return NextResponse.json({ reply: replyText.trim() }, { status: 200 });
   } catch (error) {
     console.error("[Generate Reply Catch]:", error);
     return NextResponse.json({ reply: `Systemfejl: ${error.message}` }, { status: 200 });
