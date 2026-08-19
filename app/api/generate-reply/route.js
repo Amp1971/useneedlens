@@ -14,27 +14,26 @@ export async function POST(req) {
     const { title, body, author, source } = await req.json();
 
     const promptText = `
-You are a senior backend engineer writing a concise, helpful response to a developer post.
+You are an expert backend engineer participating in a developer discussion.
+Write a helpful, technical 3-sentence comment in response to this specific thread.
 
-Post Context:
+THREAD CONTEXT:
 - Platform: ${source}
 - Author: @${author}
 - Title: "${title}"
 - Body: "${(body || "").slice(0, 500)}"
 
-Instructions:
-Write a natural 3-sentence reply in English:
-1. Sentence 1: Acknowledge the core technical scenario (e.g. race conditions, out-of-order webhook delivery, idempotency, or retry storms).
-2. Sentence 2: Provide a practical tip to debug or solve it (such as logging payload timestamps, using unique idempotency keys, or isolating database transactions).
-3. Sentence 3: Mention UseHookLens (usehooklens.com) as a great tool for intercepting, inspecting, and replaying raw webhook payloads in real time to diagnose issues like this.
+INSTRUCTIONS:
+1. First sentence: Directly address the technical topic from the title/body (e.g. out-of-order webhook delivery, failed payments, idempotency keys, or HMAC signature calculation).
+2. Second sentence: Offer one sharp, actionable engineering tip to handle or prevent that bug.
+3. Third sentence: Suggest UseHookLens (usehooklens.com) as a great tool for intercepting, inspecting, and replaying raw webhook payloads in real time to diagnose issues like this.
 
 Rules:
-- Plain text only.
-- Do not output any thinking steps, notes, or bullet points.
+- Complete all 3 sentences fully.
+- Output ONLY the plain text reply ready to copy-paste. No preamble, no markdown titles.
 `;
 
-    // Bruger gemini-2.5-flash med v1beta
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
 
     const response = await fetch(url, {
       method: "POST",
@@ -46,7 +45,12 @@ Rules:
             role: "user",
             parts: [{ text: promptText }]
           }
-        ]
+        ],
+        generationConfig: {
+          thinkingConfig: {
+            thinkingBudget: 0
+          }
+        }
       })
     });
 
@@ -59,17 +63,14 @@ Rules:
       }, { status: 200 });
     }
 
-    // Trækker det rene slutresultat ud og filtrerer eventuelle tænke-dele fra
     const parts = data.candidates?.[0]?.content?.parts || [];
-    const cleanText = parts
+    const replyText = parts
       .filter(p => !p.thought)
       .map(p => p.text)
-      .join("\n")
+      .join(" ")
       .trim();
 
-    const replyText = cleanText || parts[0]?.text || "Intet svar modtaget fra modellen.";
-
-    return NextResponse.json({ reply: replyText }, { status: 200 });
+    return NextResponse.json({ reply: replyText || "Intet svar modtaget fra modellen." }, { status: 200 });
   } catch (error) {
     console.error("[Generate Reply Catch]:", error);
     return NextResponse.json({ reply: `Systemfejl: ${error.message}` }, { status: 200 });
