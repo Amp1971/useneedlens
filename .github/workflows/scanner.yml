@@ -2,9 +2,8 @@ name: UseNeedLens Intent Scanner
 
 on:
   schedule:
-    # Kører hvert 15. minut
     - cron: '*/15 * * * *'
-  workflow_dispatch: # Gør det muligt at starte manuelt
+  workflow_dispatch:
 
 jobs:
   scan:
@@ -19,4 +18,6 @@ jobs:
           node-version: 22
 
       - name: Kør scanner-script
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: node listener.js
