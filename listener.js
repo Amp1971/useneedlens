@@ -88,34 +88,39 @@ async function sendToSlack(post, matchedKeywords) {
   }
 }
 
-// 1. Hent fra Reddit via AllOrigins åben proxy
+// 1. Hent fra Reddit via Arctic Shift API (stabilt, åbent spejl af Reddit)
 async function fetchRedditPosts() {
-  const subString = SUBREDDITS.join("+");
-  const targetUrl = `https://www.reddit.com/r/${subString}/new.json?limit=25`;
-  const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
+  const subString = SUBREDDITS.join(",");
+  const url = `https://arctic-shift.photon-reddit.com/api/posts/search?subreddits=${subString}&limit=25`;
 
   try {
-    const response = await fetch(proxyUrl);
+    const response = await fetch(url, {
+      headers: {
+        "Accept": "application/json"
+      }
+    });
+
     if (!response.ok) {
-      console.log(`[Reddit Proxy Status]: ${response.status}`);
+      console.log(`[Reddit Mirror Status]: ${response.status}`);
       return [];
     }
 
-    const data = await response.json();
-    return (data.data?.children || []).map(child => ({
-      id: `reddit_${child.data.id}`,
-      title: child.data.title || "",
-      body: child.data.selftext || "",
-      url: `https://reddit.com${child.data.permalink}`,
-      source: `r/${child.data.subreddit}`,
-      createdUtc: child.data.created_utc * 1000
+    const json = await response.json();
+    const posts = json.data || [];
+
+    return posts.map(post => ({
+      id: `reddit_${post.id}`,
+      title: post.title || "",
+      body: post.selftext || "",
+      url: `https://reddit.com${post.permalink || `/comments/${post.id}`}`,
+      source: `r/${post.subreddit}`,
+      createdUtc: post.created_utc * 1000
     }));
   } catch (error) {
     console.error("[Reddit Fetch Failed]:", error.message);
     return [];
   }
 }
-
 // 2. Hent fra Hacker News
 async function fetchHackerNewsPosts() {
   try {
