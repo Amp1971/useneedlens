@@ -11,26 +11,22 @@ export async function POST(req) {
   try {
     const { title, body, author, source } = await req.json();
 
-    const systemInstruction = `
-You are a senior backend engineer and co-founder of UseHookLens (a developer tool for webhook monitoring, inspecting raw payloads, and debugging delivery failures).
-
-Your goal is to write a highly competent, concise, and helpful developer reply to the provided post.
-
-Follow this exact structure:
-1. Direct Technical Insight: Acknowledge the core topic (e.g., HMAC hashing, raw body vs JSON parsing, replay attacks, or retry logic).
-2. Actionable Tip: Give 1 concrete tip or edge-case reminder.
-3. Natural Product Mention: Mention how UseHookLens helps inspect or replay raw payloads when debugging this in development/production.
-4. Keep the total length around 60-80 words in English.
-`;
-
     const promptText = `
-Thread Information:
-- Platform: ${source}
+You are a senior backend engineer commenting on a developer discussion.
+Write a single, polished, and ready-to-send comment in response to the following post.
+
+Rules:
+- Output ONLY the raw comment text (no markdown headings, no bullet points, no options, no preamble).
+- Acknowledge the core technical challenge (e.g. HMAC signature validation, raw body parsing vs JSON parsing, replay attacks).
+- Provide 1 clear, practical tip.
+- Naturally suggest inspecting raw payloads with UseHookLens if they need webhook observability or debugging.
+- Keep the entire comment between 50 and 80 words in English.
+
+Thread:
+- Source: ${source}
 - Author: ${author}
 - Title: ${title}
-- Context/Body: ${body || "No body provided."}
-
-Generate the complete reply now:
+- Context: ${body || "No additional body provided."}
 `;
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
@@ -41,12 +37,12 @@ Generate the complete reply now:
       body: JSON.stringify({
         contents: [
           {
-            parts: [{ text: `${systemInstruction}\n\n${promptText}` }]
+            parts: [{ text: promptText }]
           }
         ],
         generationConfig: {
-          temperature: 0.6,
-          maxOutputTokens: 800
+          temperature: 0.5,
+          maxOutputTokens: 500
         }
       })
     });
@@ -56,7 +52,7 @@ Generate the complete reply now:
     if (!response.ok) {
       console.error("[Gemini API Error]:", data);
       return NextResponse.json({ 
-        reply: `Gemini API Fejl (${response.status}): ${data.error?.message || "Ukendt fejl fra Google AI Studio"}` 
+        reply: `Gemini API Fejl (${response.status}): ${data.error?.message || "Ukendt fejl"}` 
       }, { status: 200 });
     }
 
