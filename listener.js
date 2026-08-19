@@ -118,5 +118,6 @@ async function runScan() {
 // Kør første gang
 runScan();
 
-// Kør derefter hvert 2. minut
-setInterval(runScan, 2 * 60 * 1000);
+// Kør scanningen én gang og afslut
+await runScan();
+process.exit(0);
