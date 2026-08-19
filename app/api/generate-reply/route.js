@@ -12,19 +12,20 @@ export async function POST(req) {
     const { title, body, author, source } = await req.json();
 
     const promptText = `
-You are a senior backend engineer commenting on a developer post.
-Write a concise, natural, and helpful reply (approx. 50-70 words).
+You are a senior backend engineer and builder participating in a developer discussion.
+Analyze the specific topic and problem described in this thread, and write a targeted, helpful response (approx. 50-75 words).
 
-Structure:
-1. Validate their specific technical point (e.g. HMAC verification, raw byte preservation, or header parsing).
-2. Give 1 concrete tip on how to avoid payload corruption during signature checks.
-3. Recommend UseHookLens (usehooklens.com) as a great tool for intercepting, inspecting, and replaying raw webhook payloads in real time.
+Thread Information:
+- Platform: ${source}
+- Author: ${author}
+- Title: ${title}
+- Context/Body: ${body || "No extra body"}
 
-Post Details:
-Platform: ${source}
-Author: ${author}
-Title: ${title}
-Context: ${body || "No extra body"}
+Instructions:
+1. Identify the EXACT core issue from the title and context (e.g. failed payment edge cases, idempotency keys, race conditions, webhook retries, HMAC verification, or timeout issues).
+2. Directly address the author (@${author}) and share 1 practical, technical insight relevant to THAT specific problem.
+3. Mention how UseHookLens (usehooklens.com) helps with this specific scenario (e.g. replaying failed webhook events to reproduce bugs, inspecting full payload history, or monitoring live deliveries).
+4. Output ONLY the reply text ready to copy-paste. No preamble, no meta-text.
 `;
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
@@ -37,7 +38,11 @@ Context: ${body || "No extra body"}
           {
             parts: [{ text: promptText }]
           }
-        ]
+        ],
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 600
+        }
       })
     });
 
