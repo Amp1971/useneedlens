@@ -87,35 +87,52 @@ async function sendToSlack(post, matchedKeywords) {
   }
 }
 
-// 1. Hent fra Reddit
+// 1. Hent fra Reddit via pålideligt RSS/XML feed
 async function fetchRedditPosts() {
   const subString = SUBREDDITS.join("+");
-  const url = `https://www.reddit.com/r/${subString}/new.json?limit=25`;
+  const url = `https://www.reddit.com/r/${subString}/new/.rss`;
 
   try {
     const response = await fetch(url, {
       headers: {
-        "User-Agent": "UseNeedLens-Bot/1.0 (contact: support@useneedlens.com)"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 UseNeedLens/1.0"
       }
     });
 
-    if (!response.ok) return [];
+    if (!response.ok) {
+      console.log(`[Reddit Status]: ${response.status}`);
+      return [];
+    }
 
-    const data = await response.json();
-    return (data.data?.children || []).map(child => ({
-      id: `reddit_${child.data.id}`,
-      title: child.data.title,
-      body: child.data.selftext || "",
-      url: `https://reddit.com${child.data.permalink}`,
-      source: `r/${child.data.subreddit}`,
-      createdUtc: child.data.created_utc * 1000
-    }));
+    const xml = await response.text();
+    const entries = xml.split("<entry>");
+    entries.shift(); // Fjern header
+
+    return entries.map(entry => {
+      const titleMatch = entry.match(/<title>([\s\S]*?)<\/title>/);
+      const linkMatch = entry.match(/<link href="([\s\S]*?)"/);
+      const contentMatch = entry.match(/<content type="html">([\s\S]*?)<\/content>/);
+      const idMatch = entry.match(/<id>([\s\S]*?)<\/id>/);
+
+      const title = titleMatch ? titleMatch[1].replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">") : "";
+      const rawContent = contentMatch ? contentMatch[1] : "";
+      // Fjern simple HTML tags fra RSS indholdet
+      const body = rawContent.replace(/<[^>]*>?/gm, "").slice(0, 500);
+
+      return {
+        id: idMatch ? idMatch[1] : `reddit_${Math.random()}`,
+        title: title,
+        body: body,
+        url: linkMatch ? linkMatch[1] : "https://reddit.com",
+        source: "Reddit",
+        createdUtc: Date.now()
+      };
+    });
   } catch (error) {
     console.error("[Reddit Fetch Failed]:", error.message);
     return [];
   }
 }
-
 // 2. Hent fra Hacker News
 async function fetchHackerNewsPosts() {
   try {
