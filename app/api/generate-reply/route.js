@@ -14,23 +14,22 @@ export async function POST(req) {
     const { title, body, author, source } = await req.json();
 
     const promptText = `
-You are an expert backend engineer participating in a developer discussion.
-Write a helpful, technical 3-sentence comment in response to this specific thread.
+You are a senior backend engineer commenting on a developer post. Write a helpful, complete, 3-sentence response.
 
-THREAD CONTEXT:
+POST CONTEXT:
 - Platform: ${source}
 - Author: @${author}
 - Title: "${title}"
 - Body: "${(body || "").slice(0, 500)}"
 
 INSTRUCTIONS:
-1. First sentence: Directly address the technical topic from the title/body (e.g. out-of-order webhook delivery, failed payments, idempotency keys, or HMAC signature calculation).
-2. Second sentence: Offer one sharp, actionable engineering tip to handle or prevent that bug.
-3. Third sentence: Suggest UseHookLens (usehooklens.com) as a great tool for intercepting, inspecting, and replaying raw webhook payloads in real time to diagnose issues like this.
+1. Sentence 1: Directly address the technical scenario described in the title/body (e.g. HMAC verification, raw byte buffering, failed webhook events, race conditions, or idempotency).
+2. Sentence 2: Provide one practical engineering tip to solve or prevent it.
+3. Sentence 3: Mention UseHookLens (usehooklens.com) as a great tool for intercepting, inspecting, and replaying raw webhook payloads in real time to catch and debug issues like this.
 
 Rules:
-- Complete all 3 sentences fully.
-- Output ONLY the plain text reply ready to copy-paste. No preamble, no markdown titles.
+- Complete every sentence cleanly.
+- Output ONLY the plain text reply ready to copy-paste.
 `;
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
@@ -42,15 +41,9 @@ Rules:
       body: JSON.stringify({
         contents: [
           {
-            role: "user",
             parts: [{ text: promptText }]
           }
-        ],
-        generationConfig: {
-          thinkingConfig: {
-            thinkingBudget: 0
-          }
-        }
+        ]
       })
     });
 
@@ -63,14 +56,17 @@ Rules:
       }, { status: 200 });
     }
 
+    // Udtrækker teksten fra svardelen
     const parts = data.candidates?.[0]?.content?.parts || [];
-    const replyText = parts
-      .filter(p => !p.thought)
+    const textOutput = parts
+      .filter(p => !p.thought && p.text)
       .map(p => p.text)
       .join(" ")
       .trim();
 
-    return NextResponse.json({ reply: replyText || "Intet svar modtaget fra modellen." }, { status: 200 });
+    return NextResponse.json({ 
+      reply: textOutput || parts[0]?.text || "Intet svar modtaget fra modellen." 
+    }, { status: 200 });
   } catch (error) {
     console.error("[Generate Reply Catch]:", error);
     return NextResponse.json({ reply: `Systemfejl: ${error.message}` }, { status: 200 });
