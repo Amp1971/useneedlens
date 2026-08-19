@@ -1,0 +1,22 @@
+name: UseNeedLens Intent Scanner
+
+on:
+  schedule:
+    # Kører hvert 15. minut
+    - cron: '*/15 * * * *'
+  workflow_dispatch: # Gør det muligt at starte manuelt
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hent kildekode
+        uses: actions/checkout@v4
+
+      - name: Opsæt Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Kør scanner-script
+        run: node listener.js
