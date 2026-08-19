@@ -87,47 +87,27 @@ async function sendToSlack(post, matchedKeywords) {
   }
 }
 
-// 1. Hent fra Reddit via pålideligt RSS/XML feed
+// 1. Hent fra Reddit via PullPush åbne API (blokerer ikke GitHub Actions)
 async function fetchRedditPosts() {
-  const subString = SUBREDDITS.join("+");
-  const url = `https://www.reddit.com/r/${subString}/new/.rss`;
+  const subString = SUBREDDITS.join(",");
+  const url = `https://api.pullpush.io/reddit/search/submission/?subreddit=${subString}&size=25`;
 
   try {
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 UseNeedLens/1.0"
-      }
-    });
-
+    const response = await fetch(url);
     if (!response.ok) {
-      console.log(`[Reddit Status]: ${response.status}`);
+      console.log(`[Reddit/PullPush Status]: ${response.status}`);
       return [];
     }
 
-    const xml = await response.text();
-    const entries = xml.split("<entry>");
-    entries.shift(); // Fjern header
-
-    return entries.map(entry => {
-      const titleMatch = entry.match(/<title>([\s\S]*?)<\/title>/);
-      const linkMatch = entry.match(/<link href="([\s\S]*?)"/);
-      const contentMatch = entry.match(/<content type="html">([\s\S]*?)<\/content>/);
-      const idMatch = entry.match(/<id>([\s\S]*?)<\/id>/);
-
-      const title = titleMatch ? titleMatch[1].replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">") : "";
-      const rawContent = contentMatch ? contentMatch[1] : "";
-      // Fjern simple HTML tags fra RSS indholdet
-      const body = rawContent.replace(/<[^>]*>?/gm, "").slice(0, 500);
-
-      return {
-        id: idMatch ? idMatch[1] : `reddit_${Math.random()}`,
-        title: title,
-        body: body,
-        url: linkMatch ? linkMatch[1] : "https://reddit.com",
-        source: "Reddit",
-        createdUtc: Date.now()
-      };
-    });
+    const data = await response.json();
+    return (data.data || []).map(post => ({
+      id: `reddit_${post.id}`,
+      title: post.title || "",
+      body: post.selftext || "",
+      url: post.full_link || `https://reddit.com${post.permalink || ""}`,
+      source: `r/${post.subreddit}`,
+      createdUtc: post.created_utc * 1000
+    }));
   } catch (error) {
     console.error("[Reddit Fetch Failed]:", error.message);
     return [];
