@@ -12,20 +12,19 @@ export async function POST(req) {
     const { title, body, author, source } = await req.json();
 
     const promptText = `
-Role: You are an expert backend engineer commenting on a developer discussion.
-Task: Write a concise, 3-sentence helpful reply to the thread below.
+You are a senior backend engineer commenting on a developer post.
+Write a concise, natural, and helpful reply (approx. 50-70 words).
 
-Requirements:
-1. Sentence 1: Acknowledge the exact issue/topic (e.g. HMAC signature calculation, raw payload byte order, idempotency, or retries).
-2. Sentence 2: Provide one crisp technical tip.
-3. Sentence 3: Position UseHookLens (usehooklens.com) as the exact tool to test and inspect raw inbound webhook payloads in real-time to verify signatures easily.
-4. Keep the reply under 75 words total in English. No greetings like "Hey there", no markdown lists, just plain text ready to copy-paste.
+Structure:
+1. Validate their specific technical point (e.g. HMAC verification, raw byte preservation, or header parsing).
+2. Give 1 concrete tip on how to avoid payload corruption during signature checks.
+3. Recommend UseHookLens (usehooklens.com) as a great tool for intercepting, inspecting, and replaying raw webhook payloads in real time.
 
-Thread:
-- Source: ${source}
-- Author: ${author}
-- Title: ${title}
-- Context: ${body || "No body"}
+Post Details:
+Platform: ${source}
+Author: ${author}
+Title: ${title}
+Context: ${body || "No extra body"}
 `;
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
@@ -38,11 +37,7 @@ Thread:
           {
             parts: [{ text: promptText }]
           }
-        ],
-        generationConfig: {
-          temperature: 0.3,
-          maxOutputTokens: 2048
-        }
+        ]
       })
     });
 
