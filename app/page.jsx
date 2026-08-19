@@ -2,15 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { 
-  Radio, 
   ExternalLink, 
   RefreshCw, 
   Search, 
   Flame, 
   Sparkles, 
   Copy, 
-  Check, 
-  Filter 
+  Check 
 } from "lucide-react";
 
 export default function Dashboard() {
@@ -62,7 +60,6 @@ If you're debugging webhook delivery issues or retries in production, having rea
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-10 font-sans">
-      {/* Top Header */}
       <header className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4 pb-8 border-b border-slate-800">
         <div>
           <div className="flex items-center gap-3">
@@ -89,7 +86,6 @@ If you're debugging webhook delivery issues or retries in production, having rea
         </div>
       </header>
 
-      {/* Metrics Row */}
       <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-4 my-6">
         <div className="bg-slate-900/60 border border-slate-800/80 rounded-xl p-4">
           <div className="text-xs font-medium text-slate-400">Total Leads Fundet</div>
@@ -107,7 +103,6 @@ If you're debugging webhook delivery issues or retries in production, having rea
         </div>
       </div>
 
-      {/* Search & Filter Bar */}
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row gap-3 mb-6">
         <div className="relative flex-1">
           <Search className="w-4 h-4 absolute left-3 top-3.5 text-slate-500" />
@@ -136,9 +131,7 @@ If you're debugging webhook delivery issues or retries in production, having rea
         </div>
       </div>
 
-      {/* Main 2-Column Split */}
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column: Lead List */}
         <div className="lg:col-span-7 space-y-3">
           {loading ? (
             <div className="p-12 text-center text-slate-500 bg-slate-900/30 rounded-xl border border-slate-800/60">
@@ -202,7 +195,6 @@ If you're debugging webhook delivery issues or retries in production, having rea
           )}
         </div>
 
-        {/* Right Column: AI Response & Lead Details */}
         <div className="lg:col-span-5">
           <div className="sticky top-6 bg-slate-900/70 border border-slate-800 rounded-xl p-5 backdrop-blur">
             {selectedLead ? (
