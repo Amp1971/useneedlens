@@ -10,7 +10,7 @@ const KEYWORDS = [
   "hookdeck"
 ];
 
-// 1. Stack Overflow API (Tags: webhooks, stripe-api, next.js)
+// 1. Stack Overflow API
 async function fetchStackOverflow() {
   try {
     const url = "https://api.stackexchange.com/2.3/questions?pagesize=20&order=desc&sort=creation&tagged=webhooks&site=stackoverflow&filter=withbody";
@@ -34,7 +34,7 @@ async function fetchStackOverflow() {
   }
 }
 
-// 2. Dev.to API (Artikler og diskussioner)
+// 2. Dev.to API
 async function fetchDevTo() {
   try {
     const url = "https://dev.to/api/articles?tag=webhooks&per_page=15";
@@ -98,7 +98,6 @@ export async function GET() {
 
   const rawLeads = [...so, ...dev, ...hn];
 
-  // Match mod søgeord og tildel Intent Level
   const processed = rawLeads
     .map(lead => {
       const text = `${lead.title} ${lead.body}`.toLowerCase();
