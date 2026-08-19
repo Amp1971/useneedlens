@@ -1,7 +1,8 @@
 const SLACK_WEBHOOK_URL = process.env.SLACK_WEBHOOK_URL;
 
+// Tilføjet "the" som midlertidigt testord, så du kan se matches med det samme
 const KEYWORDS = [
-  "the", // Midlertidigt testord
+  "the", 
   "webhook failed",
   "webhook error",
   "stripe webhook",
@@ -87,55 +88,34 @@ async function sendToSlack(post, matchedKeywords) {
   }
 }
 
-// 1. Pålidelig Reddit scanner via åbent RSS feed
+// 1. Hent fra Reddit via AllOrigins åben proxy
 async function fetchRedditPosts() {
-  // Søger på tværs af de valgte subreddits via Googles realtidsfeed
-  const query = encodeURIComponent(`site:reddit.com/r/ (${SUBREDDITS.join(" OR ")})`);
-  const url = `https://news.google.com/rss/search?q=${query}&hl=en-US&gl=US&ceid=US:en`;
+  const subString = SUBREDDITS.join("+");
+  const targetUrl = `https://www.reddit.com/r/${subString}/new.json?limit=25`;
+  const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
 
   try {
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
-      }
-    });
-
+    const response = await fetch(proxyUrl);
     if (!response.ok) {
-      console.log(`[Reddit Feed Status]: ${response.status}`);
+      console.log(`[Reddit Proxy Status]: ${response.status}`);
       return [];
     }
 
-    const xml = await response.text();
-    const items = xml.split("<item>");
-    items.shift(); // Fjern header
-
-    return items.map(item => {
-      const titleMatch = item.match(/<title>([\s\S]*?)<\/title>/);
-      const linkMatch = item.match(/<link>([\s\S]*?)<\/link>/);
-      const descMatch = item.match(/<description>([\s\S]*?)<\/description>/);
-      const guidMatch = item.match(/<guid[^>]*>([\s\S]*?)<\/guid>/);
-
-      const rawTitle = titleMatch ? titleMatch[1] : "";
-      const rawDesc = descMatch ? descMatch[1] : "";
-      
-      // Rens HTML tags og html entities
-      const title = rawTitle.replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'");
-      const body = rawDesc.replace(/<[^>]*>?/gm, " ").replace(/&amp;/g, "&").slice(0, 400);
-
-      return {
-        id: guidMatch ? guidMatch[1] : `reddit_${Math.random()}`,
-        title: title,
-        body: body,
-        url: linkMatch ? linkMatch[1] : "https://reddit.com",
-        source: "Reddit (Live Feed)",
-        createdUtc: Date.now()
-      };
-    });
+    const data = await response.json();
+    return (data.data?.children || []).map(child => ({
+      id: `reddit_${child.data.id}`,
+      title: child.data.title || "",
+      body: child.data.selftext || "",
+      url: `https://reddit.com${child.data.permalink}`,
+      source: `r/${child.data.subreddit}`,
+      createdUtc: child.data.created_utc * 1000
+    }));
   } catch (error) {
     console.error("[Reddit Fetch Failed]:", error.message);
     return [];
   }
 }
+
 // 2. Hent fra Hacker News
 async function fetchHackerNewsPosts() {
   try {
@@ -192,7 +172,7 @@ async function runScan() {
 
     if (matchedKeywords.length > 0) {
       matchesCount++;
-      console.log(`\n🎯 Match fundet: ${post.title}`);
+      console.log(`\n🎯 Match fundet (${post.source}): ${post.title}`);
       await sendToSlack(post, matchedKeywords);
     }
   }
