@@ -1,3 +1,5 @@
+import './globals.css';
+
 export const metadata = {
   title: 'UseNeedLens - Social Intent & Lead Monitor',
   description: 'Find developer leads and intent signals across developer communities',
