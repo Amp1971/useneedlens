@@ -129,7 +129,7 @@ export default function Dashboard() {
         <div className="bg-slate-900/60 border border-slate-800/80 rounded-xl p-4">
           <div className="text-xs font-medium text-slate-400">AI Outreach Engine</div>
           <div className="text-sm font-semibold text-purple-400 mt-2 flex items-center gap-1.5">
-            <Sparkles className="w-4 h-4" /> Gemini Flash 2.5 Active
+            <Sparkles className="w-4 h-4" /> Gemini Flash 3.6 Active
           </div>
         </div>
       </div>
@@ -263,9 +263,9 @@ export default function Dashboard() {
                   <h4 className="text-xs font-medium text-slate-400 mb-1.5 flex items-center gap-1.5">
                     <Bot className="w-3.5 h-3.5 text-purple-400" /> Gemini Analyse & Svar:
                   </h4>
-                  <div className="min-h-[140px] p-3.5 bg-slate-950/80 border border-slate-800 rounded-lg text-xs text-slate-300 whitespace-pre-wrap leading-relaxed">
+                  <div className="min-h-[160px] p-4 bg-slate-950/80 border border-slate-800 rounded-lg text-xs text-slate-200 whitespace-pre-wrap leading-relaxed">
                     {isGenerating ? (
-                      <div className="flex items-center gap-2 text-slate-500 py-6 justify-center">
+                      <div className="flex items-center gap-2 text-slate-500 py-8 justify-center">
                         <Sparkles className="w-4 h-4 animate-spin text-purple-400" />
                         Analyserer tråd og formulerer svar...
                       </div>
