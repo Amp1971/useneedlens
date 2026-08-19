@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 
-// Deaktiver al caching på Vercel/Next.js for denne API-rute
 export const dynamic = "force-dynamic";
 
 export async function POST(req) {
@@ -15,20 +14,23 @@ export async function POST(req) {
     const { title, body, author, source } = await req.json();
 
     const promptText = `
-You are an expert backend engineer participating in a developer discussion.
-Carefully read the specific thread context below and generate a tailored, helpful reply.
+You are a senior backend engineer writing a direct, helpful comment on a developer thread.
 
-THREAD TO ANSWER:
-Platform: ${source}
-Author: ${author}
-Title: "${title}"
-Details / Body: "${body || "No additional body"}"
+CONTEXT:
+- Platform: ${source}
+- Author: ${author}
+- Post Title: "${title}"
+- Post Content: "${body || ""}"
 
-REPLY INSTRUCTIONS:
-1. FIRST SENTENCE: Directly mention and respond to the specific topic in the title/body (e.g. if it's about failed payments, duplicates, race conditions, or Stripe retries, talk ONLY about that). Do NOT mention HMAC or signatures unless the post explicitly talks about HMAC/signatures.
-2. SECOND SENTENCE: Offer one sharp, actionable engineering tip to solve or prevent that exact problem (e.g., using idempotency keys, atomic database transactions, or logging raw event payloads).
-3. THIRD SENTENCE: Recommend UseHookLens (usehooklens.com) as a developer tool specifically designed to inspect, monitor, and replay webhook events to catch bugs like this in staging and production.
-4. Total length: 50-75 words in clear English. Output ONLY the response text.
+TASK:
+Write a complete 3-sentence reply in English:
+1. First sentence: Address @${author} and discuss their exact technical situation (e.g. race conditions, out-of-order events, idempotency keys, HMAC signatures, or adapter patterns).
+2. Second sentence: Give one concrete engineering tip to handle or prevent that bug.
+3. Third sentence: Suggest UseHookLens (usehooklens.com) as a great tool for intercepting, inspecting, and replaying raw webhook payloads in real time to debug issues like this.
+
+Rules:
+- Complete all sentences fully.
+- Output ONLY the plain comment text without any markdown headings or lists.
 `;
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
@@ -44,11 +46,7 @@ REPLY INSTRUCTIONS:
           {
             parts: [{ text: promptText }]
           }
-        ],
-        generationConfig: {
-          temperature: 0.4,
-          maxOutputTokens: 600
-        }
+        ]
       })
     });
 
