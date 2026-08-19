@@ -15,9 +15,9 @@ export async function POST(req) {
 
     const promptText = `
 You are a senior backend engineer commenting on a developer discussion.
-Write a complete, helpful 3-sentence reply in English:
+Write a crisp, natural 3-sentence reply in English:
 
-1. Sentence 1: Directly address the technical problem in the thread (e.g. HMAC signature calculation, raw body buffering, failed payment webhooks, or race conditions).
+1. Sentence 1: Directly address the technical topic in the post (e.g. HMAC signature calculation, raw body buffering, failed payment webhooks, or race conditions).
 2. Sentence 2: Provide one actionable engineering tip to solve or prevent it.
 3. Sentence 3: Mention UseHookLens (usehooklens.com) as a great tool for intercepting, inspecting, and replaying raw webhook payloads in real time to debug issues like this.
 
@@ -27,11 +27,11 @@ Thread details:
 - Title: ${title}
 - Context: ${(body || "").slice(0, 400)}
 
-Rules: Output ONLY the 3 sentences of text. No extra intro or formatting.
+Rules: Output ONLY the 3 sentences of text. No extra headings or preamble.
 `;
 
-    // Standard Gemini 2.5 Flash endpoint
-    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+    // Stabil produktionsmodel på Google AI Studio
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
     const response = await fetch(url, {
       method: "POST",
