@@ -1,6 +1,7 @@
 const SLACK_WEBHOOK_URL = process.env.SLACK_WEBHOOK_URL;
 
 const KEYWORDS = [
+  "the", // Midlertidigt testord
   "webhook failed",
   "webhook error",
   "stripe webhook",
