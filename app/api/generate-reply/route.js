@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 
+// Deaktiver al caching på Vercel/Next.js for denne API-rute
+export const dynamic = "force-dynamic";
+
 export async function POST(req) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -12,27 +15,30 @@ export async function POST(req) {
     const { title, body, author, source } = await req.json();
 
     const promptText = `
-You are a senior backend engineer and builder participating in a developer discussion.
-Analyze the specific topic and problem described in this thread, and write a targeted, helpful response (approx. 50-75 words).
+You are an expert backend engineer participating in a developer discussion.
+Carefully read the specific thread context below and generate a tailored, helpful reply.
 
-Thread Information:
-- Platform: ${source}
-- Author: ${author}
-- Title: ${title}
-- Context/Body: ${body || "No extra body"}
+THREAD TO ANSWER:
+Platform: ${source}
+Author: ${author}
+Title: "${title}"
+Details / Body: "${body || "No additional body"}"
 
-Instructions:
-1. Identify the EXACT core issue from the title and context (e.g. failed payment edge cases, idempotency keys, race conditions, webhook retries, HMAC verification, or timeout issues).
-2. Directly address the author (@${author}) and share 1 practical, technical insight relevant to THAT specific problem.
-3. Mention how UseHookLens (usehooklens.com) helps with this specific scenario (e.g. replaying failed webhook events to reproduce bugs, inspecting full payload history, or monitoring live deliveries).
-4. Output ONLY the reply text ready to copy-paste. No preamble, no meta-text.
+REPLY INSTRUCTIONS:
+1. FIRST SENTENCE: Directly mention and respond to the specific topic in the title/body (e.g. if it's about failed payments, duplicates, race conditions, or Stripe retries, talk ONLY about that). Do NOT mention HMAC or signatures unless the post explicitly talks about HMAC/signatures.
+2. SECOND SENTENCE: Offer one sharp, actionable engineering tip to solve or prevent that exact problem (e.g., using idempotency keys, atomic database transactions, or logging raw event payloads).
+3. THIRD SENTENCE: Recommend UseHookLens (usehooklens.com) as a developer tool specifically designed to inspect, monitor, and replay webhook events to catch bugs like this in staging and production.
+4. Total length: 50-75 words in clear English. Output ONLY the response text.
 `;
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
 
     const response = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json" 
+      },
+      cache: "no-store",
       body: JSON.stringify({
         contents: [
           {
@@ -40,7 +46,7 @@ Instructions:
           }
         ],
         generationConfig: {
-          temperature: 0.7,
+          temperature: 0.4,
           maxOutputTokens: 600
         }
       })
