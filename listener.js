@@ -1,4 +1,5 @@
-// Konfiguration: Nøgleord og subreddits
+const SLACK_WEBHOOK_URL = process.env.SLACK_WEBHOOK_URL;
+
 const KEYWORDS = [
   "webhook failed",
   "webhook error",
@@ -12,7 +13,80 @@ const KEYWORDS = [
 const SUBREDDITS = ["webdev", "nextjs", "SaaS", "stripe", "node"];
 const SEEN_POSTS = new Set();
 
-// 1. Hent fra Reddit via offentligt JSON-feed
+// Send notifikation til Slack
+async function sendToSlack(post, matchedKeywords) {
+  if (!SLACK_WEBHOOK_URL) {
+    console.log("[Slack] Ingen webhook konfigureret, skipper notifikation.");
+    return;
+  }
+
+  const payload = {
+    blocks: [
+      {
+        type: "header",
+        text: {
+          type: "plain_text",
+          text: "🎯 Nyt potentielt lead fundet!",
+          emoji: true
+        }
+      },
+      {
+        type: "section",
+        fields: [
+          {
+            type: "mrkdwn",
+            text: `*Kilde:*\n${post.source}`
+          },
+          {
+            type: "mrkdwn",
+            text: `*Søgeord:*\n\`${matchedKeywords.join(", ")}\``
+          }
+        ]
+      },
+      {
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: `*<${post.url}|${post.title}>*\n\n${post.body ? post.body.slice(0, 250) + "..." : "_Ingen brødtekst_"}`
+        }
+      },
+      {
+        type: "actions",
+        elements: [
+          {
+            type: "button",
+            text: {
+              type: "plain_text",
+              text: "Åbn tråd ↗️"
+            },
+            url: post.url,
+            style: "primary"
+          }
+        ]
+      },
+      {
+        type: "divider"
+      }
+    ]
+  };
+
+  try {
+    const res = await fetch(SLACK_WEBHOOK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      console.error(`[Slack Error] Status: ${res.status}`);
+    } else {
+      console.log(`[Slack] Notifikation sendt for: ${post.title}`);
+    }
+  } catch (err) {
+    console.error("[Slack Fetch Error]:", err.message);
+  }
+}
+
+// 1. Hent fra Reddit
 async function fetchRedditPosts() {
   const subString = SUBREDDITS.join("+");
   const url = `https://www.reddit.com/r/${subString}/new.json?limit=25`;
@@ -24,10 +98,7 @@ async function fetchRedditPosts() {
       }
     });
 
-    if (!response.ok) {
-      console.error(`[Reddit Error] Status: ${response.status}`);
-      return [];
-    }
+    if (!response.ok) return [];
 
     const data = await response.json();
     return (data.data?.children || []).map(child => ({
@@ -44,12 +115,12 @@ async function fetchRedditPosts() {
   }
 }
 
-// 2. Hent fra Hacker News via åbent API
+// 2. Hent fra Hacker News
 async function fetchHackerNewsPosts() {
   try {
     const res = await fetch("https://hacker-news.firebaseio.com/v0/newstories.json");
     const storyIds = await res.json();
-    const top20Ids = storyIds.slice(0, 20);
+    const top20Ids = (storyIds || []).slice(0, 20);
 
     const posts = await Promise.all(
       top20Ids.map(async id => {
@@ -75,13 +146,11 @@ async function fetchHackerNewsPosts() {
   }
 }
 
-// 3. Match mod søgeord
 function matchesKeywords(text) {
   const normalized = text.toLowerCase();
   return KEYWORDS.filter(keyword => normalized.includes(keyword.toLowerCase()));
 }
 
-// 4. Hovedscanner
 async function runScan() {
   console.log(`\n🔍 [${new Date().toLocaleTimeString()}] Scanner Reddit & Hacker News...`);
 
@@ -102,22 +171,15 @@ async function runScan() {
 
     if (matchedKeywords.length > 0) {
       matchesCount++;
-      console.log("\n🎯 MATCH FUNDET!");
-      console.log(`Kilde:    ${post.source}`);
-      console.log(`Titel:    ${post.title}`);
-      console.log(`Keywords: ${matchedKeywords.join(", ")}`);
-      console.log(`Link:     ${post.url}`);
+      console.log(`\n🎯 Match fundet: ${post.title}`);
+      await sendToSlack(post, matchedKeywords);
     }
   }
 
   if (matchesCount === 0) {
-    console.log(`Scannet ${allPosts.length} nye opslag. Ingen nye matches lige nu.`);
+    console.log(`Scannet ${allPosts.length} opslag. Ingen nye matches.`);
   }
 }
 
-// Kør første gang
-runScan();
-
-// Kør scanningen én gang og afslut
 await runScan();
 process.exit(0);
