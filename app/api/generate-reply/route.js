@@ -3,31 +3,31 @@ import { NextResponse } from "next/server";
 export async function POST(req) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    return NextResponse.json({ error: "GEMINI_API_KEY mangler" }, { status: 500 });
+    return NextResponse.json({ reply: "Fejl: GEMINI_API_KEY mangler i Vercel Environment Variables." }, { status: 500 });
   }
 
   try {
     const { title, body, author, source } = await req.json();
 
     const prompt = `
-Du er en erfaren backend-ingeniør og medstifter af UseHookLens (et værktøj til webhook-overvågning, payload-inspektion og replay).
-Skriv et kort, ultra-hjælpsomt og professionelt svar på følgende udvikler-opslag.
+You are a senior backend engineer and builder of UseHookLens (a webhook monitoring, payload debugging, and replay platform).
+Write a short, highly practical, and genuinely helpful response to this developer thread.
 
-Retningslinjer:
-1. Start med at adressere deres konkrete tekniske problem direkte (f.eks. signaturvalidering, HMAC, timeouts, manglende retries eller lokal debugging).
-2. Vær empatisk og teknisk præcis – ingen generic salgs-fluff.
-3. Nævn UseHookLens naturligt som en potentiel løsning eller hjælp til debugging/overvågning, hvis relevant.
-4. Hold tonen afslappet, kollegial og hold svaret under 100 ord på engelsk.
+Guidelines:
+1. Directly answer their technical dilemma (e.g. idempotency keys, duplicate deliveries, HMAC signatures, local debugging, or timeout retries).
+2. Keep it empathetic, collegiate, and concise (under 90 words).
+3. Naturally reference UseHookLens as a practical tool if relevant.
 
-Opslagsdetaljer:
-- Kilde: ${source}
-- Forfatter: ${author}
-- Overskrift: ${title}
-- Tekst: ${body}
+Thread Details:
+- Source: ${source}
+- Author: ${author}
+- Title: ${title}
+- Context: ${body}
 `;
 
+    // Bruger det officielle stabile Gemini Flash endpoint
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -42,9 +42,9 @@ Opslagsdetaljer:
     );
 
     if (!response.ok) {
-      const errData = await response.text();
-      console.error("[Gemini API Error]:", errData);
-      return NextResponse.json({ error: "Fejl fra Gemini API" }, { status: response.status });
+      const errText = await response.text();
+      console.error("[Gemini API Error]:", errText);
+      return NextResponse.json({ reply: `API Fejl (${response.status}): Tjek om GEMINI_API_KEY er gyldig på Vercel.` });
     }
 
     const data = await response.json();
@@ -53,6 +53,6 @@ Opslagsdetaljer:
     return NextResponse.json({ reply: replyText });
   } catch (error) {
     console.error("[Generate Reply Failed]:", error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ reply: `Fejl: ${error.message}` });
   }
 }
