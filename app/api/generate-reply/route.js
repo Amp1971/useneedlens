@@ -13,7 +13,7 @@ export async function POST(req) {
 
     const promptText = `
 You are a senior backend engineer and builder of UseHookLens (a webhook monitoring, payload debugging, and replay platform).
-Write a short, highly practical, and genuinely helpful response to this developer thread.
+Write a short, practical, and genuinely helpful reply to this developer thread.
 
 Guidelines:
 1. Directly address their technical problem (e.g. HMAC signatures, duplicate handling, local debugging, or timeout retries).
@@ -27,21 +27,20 @@ Thread Details:
 - Context: ${body}
 `;
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+    // Stabilt Google AI Studio API-endpoint
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
     const response = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json" 
+      },
       body: JSON.stringify({
         contents: [
           {
             parts: [{ text: promptText }]
           }
-        ],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 300
-        }
+        ]
       })
     });
 
