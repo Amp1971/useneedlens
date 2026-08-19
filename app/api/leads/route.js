@@ -10,10 +10,10 @@ const KEYWORDS = [
   "hookdeck"
 ];
 
-// 1. Stack Overflow API
+// 1. Stack Overflow API (Tags: webhooks, stripe-api)
 async function fetchStackOverflow() {
   try {
-    const url = "https://api.stackexchange.com/2.3/questions?pagesize=20&order=desc&sort=creation&tagged=webhooks&site=stackoverflow&filter=withbody";
+    const url = "https://api.stackexchange.com/2.3/questions?pagesize=25&order=desc&sort=creation&tagged=webhooks&site=stackoverflow&filter=withbody";
     const res = await fetch(url, { next: { revalidate: 300 } });
     if (!res.ok) return [];
     const data = await res.json();
@@ -21,7 +21,7 @@ async function fetchStackOverflow() {
     return (data.items || []).map(q => ({
       id: `so_${q.question_id}`,
       title: q.title.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&"),
-      body: (q.body || "").replace(/<[^>]*>?/gm, " ").slice(0, 300),
+      body: (q.body || "").replace(/<[^>]*>?/gm, " ").slice(0, 350),
       url: q.link,
       source: "Stack Overflow",
       author: q.owner?.display_name || "Anonymous",
@@ -34,10 +34,10 @@ async function fetchStackOverflow() {
   }
 }
 
-// 2. Dev.to API
+// 2. Dev.to API (Artikler og diskussioner om webhooks)
 async function fetchDevTo() {
   try {
-    const url = "https://dev.to/api/articles?tag=webhooks&per_page=15";
+    const url = "https://dev.to/api/articles?tag=webhooks&per_page=20";
     const res = await fetch(url, { next: { revalidate: 300 } });
     if (!res.ok) return [];
     const data = await res.json();
@@ -58,31 +58,31 @@ async function fetchDevTo() {
   }
 }
 
-// 3. Hacker News API
+// 3. Hacker News Algolia Search API (Målrettet søgning på webhook-relaterede emner)
 async function fetchHackerNews() {
   try {
-    const res = await fetch("https://hacker-news.firebaseio.com/v0/newstories.json", { next: { revalidate: 300 } });
-    const ids = (await res.json() || []).slice(0, 25);
+    const query = encodeURIComponent("webhook OR stripe webhook OR svix OR hookdeck");
+    const url = `https://hn.algolia.com/api/v1/search_by_date?query=${query}&tags=(story,comment)&hitsPerPage=25`;
+    const res = await fetch(url, { next: { revalidate: 300 } });
+    if (!res.ok) return [];
+    const data = await res.json();
 
-    const posts = await Promise.all(
-      ids.map(async id => {
-        const itemRes = await fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`);
-        const item = await itemRes.json();
-        if (!item || !item.title) return null;
-        return {
-          id: `hn_${item.id}`,
-          title: item.title,
-          body: (item.text || "").replace(/<[^>]*>?/gm, " ").slice(0, 300),
-          url: item.url || `https://news.ycombinator.com/item?id=${item.id}`,
-          source: "Hacker News",
-          author: item.by || "HN User",
-          createdAt: item.time * 1000,
-          tags: ["tech", "hn"]
-        };
-      })
-    );
+    return (data.hits || []).map(hit => {
+      const title = hit.story_title || hit.title || (hit.comment_text ? hit.comment_text.slice(0, 80) + "..." : "Hacker News Diskussion");
+      const body = (hit.comment_text || hit.story_text || "").replace(/<[^>]*>?/gm, " ").slice(0, 350);
+      const postUrl = hit.url || `https://news.ycombinator.com/item?id=${hit.objectID}`;
 
-    return posts.filter(Boolean);
+      return {
+        id: `hn_${hit.objectID}`,
+        title: title.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&"),
+        body: body,
+        url: postUrl,
+        source: "Hacker News",
+        author: hit.author || "HN User",
+        createdAt: new Date(hit.created_at).getTime(),
+        tags: ["hackernews", "webhook"]
+      };
+    });
   } catch (err) {
     console.error("[HN Error]:", err.message);
     return [];
@@ -104,7 +104,16 @@ export async function GET() {
       const matched = KEYWORDS.filter(k => text.includes(k.toLowerCase()));
 
       let intent = "Low";
-      if (text.includes("error") || text.includes("failed") || text.includes("debug") || text.includes("stripe")) {
+      // Evaluer reel købsintention / pain points
+      if (
+        text.includes("error") || 
+        text.includes("failed") || 
+        text.includes("retry") || 
+        text.includes("debug") || 
+        text.includes("stripe") || 
+        text.includes("monitor") ||
+        text.includes("lost")
+      ) {
         intent = "High";
       } else if (matched.length > 0) {
         intent = "Medium";
@@ -116,7 +125,11 @@ export async function GET() {
         intent
       };
     })
-    .filter(lead => lead.matchedKeywords.length > 0)
+    // Sikrer at alle viste resultater rent faktisk er webhook-relevante
+    .filter(lead => {
+      const fullText = `${lead.title} ${lead.body}`.toLowerCase();
+      return KEYWORDS.some(k => fullText.includes(k.toLowerCase()));
+    })
     .sort((a, b) => b.createdAt - a.createdAt);
 
   return NextResponse.json({ leads: processed, count: processed.length });
