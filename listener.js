@@ -87,27 +87,50 @@ async function sendToSlack(post, matchedKeywords) {
   }
 }
 
-// 1. Hent fra Reddit via PullPush åbne API (blokerer ikke GitHub Actions)
+// 1. Pålidelig Reddit scanner via åbent RSS feed
 async function fetchRedditPosts() {
-  const subString = SUBREDDITS.join(",");
-  const url = `https://api.pullpush.io/reddit/search/submission/?subreddit=${subString}&size=25`;
+  // Søger på tværs af de valgte subreddits via Googles realtidsfeed
+  const query = encodeURIComponent(`site:reddit.com/r/ (${SUBREDDITS.join(" OR ")})`);
+  const url = `https://news.google.com/rss/search?q=${query}&hl=en-US&gl=US&ceid=US:en`;
 
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+      }
+    });
+
     if (!response.ok) {
-      console.log(`[Reddit/PullPush Status]: ${response.status}`);
+      console.log(`[Reddit Feed Status]: ${response.status}`);
       return [];
     }
 
-    const data = await response.json();
-    return (data.data || []).map(post => ({
-      id: `reddit_${post.id}`,
-      title: post.title || "",
-      body: post.selftext || "",
-      url: post.full_link || `https://reddit.com${post.permalink || ""}`,
-      source: `r/${post.subreddit}`,
-      createdUtc: post.created_utc * 1000
-    }));
+    const xml = await response.text();
+    const items = xml.split("<item>");
+    items.shift(); // Fjern header
+
+    return items.map(item => {
+      const titleMatch = item.match(/<title>([\s\S]*?)<\/title>/);
+      const linkMatch = item.match(/<link>([\s\S]*?)<\/link>/);
+      const descMatch = item.match(/<description>([\s\S]*?)<\/description>/);
+      const guidMatch = item.match(/<guid[^>]*>([\s\S]*?)<\/guid>/);
+
+      const rawTitle = titleMatch ? titleMatch[1] : "";
+      const rawDesc = descMatch ? descMatch[1] : "";
+      
+      // Rens HTML tags og html entities
+      const title = rawTitle.replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+      const body = rawDesc.replace(/<[^>]*>?/gm, " ").replace(/&amp;/g, "&").slice(0, 400);
+
+      return {
+        id: guidMatch ? guidMatch[1] : `reddit_${Math.random()}`,
+        title: title,
+        body: body,
+        url: linkMatch ? linkMatch[1] : "https://reddit.com",
+        source: "Reddit (Live Feed)",
+        createdUtc: Date.now()
+      };
+    });
   } catch (error) {
     console.error("[Reddit Fetch Failed]:", error.message);
     return [];
