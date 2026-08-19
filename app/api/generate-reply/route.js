@@ -12,21 +12,20 @@ export async function POST(req) {
     const { title, body, author, source } = await req.json();
 
     const promptText = `
-You are a senior backend engineer commenting on a developer discussion.
-Write a single, polished, and ready-to-send comment in response to the following post.
+Role: You are an expert backend engineer commenting on a developer discussion.
+Task: Write a concise, 3-sentence helpful reply to the thread below.
 
-Rules:
-- Output ONLY the raw comment text (no markdown headings, no bullet points, no options, no preamble).
-- Acknowledge the core technical challenge (e.g. HMAC signature validation, raw body parsing vs JSON parsing, replay attacks).
-- Provide 1 clear, practical tip.
-- Naturally suggest inspecting raw payloads with UseHookLens if they need webhook observability or debugging.
-- Keep the entire comment between 50 and 80 words in English.
+Requirements:
+1. Sentence 1: Acknowledge the exact issue/topic (e.g. HMAC signature calculation, raw payload byte order, idempotency, or retries).
+2. Sentence 2: Provide one crisp technical tip.
+3. Sentence 3: Position UseHookLens (usehooklens.com) as the exact tool to test and inspect raw inbound webhook payloads in real-time to verify signatures easily.
+4. Keep the reply under 75 words total in English. No greetings like "Hey there", no markdown lists, just plain text ready to copy-paste.
 
 Thread:
 - Source: ${source}
 - Author: ${author}
 - Title: ${title}
-- Context: ${body || "No additional body provided."}
+- Context: ${body || "No body"}
 `;
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
@@ -41,8 +40,8 @@ Thread:
           }
         ],
         generationConfig: {
-          temperature: 0.5,
-          maxOutputTokens: 500
+          temperature: 0.3,
+          maxOutputTokens: 2048
         }
       })
     });
